@@ -1,0 +1,48 @@
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Confluent Schema Registry with the network-analytics YANG schema plugin, for local testing.
+#
+# The registry keeps its schemas in its own single-node Kafka ("kafka-store"); YANG-Push telemetry can go to any
+# other broker. The REST API is published on localhost:18081 (8081 is taken by the Druid coordinator).
+#
+#   ./fetch-plugin.sh && docker compose up -d
+services:
+  kafka-store:
+    image: apache/kafka:4.1.0
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-store:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka-store:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+
+  schema-registry:
+    image: confluentinc/cp-schema-registry:8.0.0
+    depends_on:
+      - kafka-store
+    ports:
+      - "18081:8081"
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka-store:9092
+      SCHEMA_REGISTRY_SCHEMA_PROVIDERS: ch.swisscom.kafka.schemaregistry.yang.YangSchemaProvider
+    volumes:
+      - ./plugins/yang-schema-registry-plugin-0.0.5-shaded.jar:/usr/share/java/schema-registry/yang-schema-registry-plugin-0.0.5-shaded.jar:ro

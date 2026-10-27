@@ -1,0 +1,161 @@
+{
+  "type": "kafka",
+  "spec": {
+    "dataSchema": {
+      "dataSource": "yang_interfaces",
+      "timestampSpec": {
+        "column": "eventTime",
+        "format": "iso"
+      },
+      "dimensionsSpec": {
+        "useSchemaDiscovery": true,
+        "dimensions": [
+          "device",
+          "name",
+          {
+            "type": "long",
+            "name": "subscription-id"
+          },
+          "admin-status",
+          "oper-status",
+          {
+            "type": "long",
+            "name": "speed"
+          },
+          {
+            "type": "long",
+            "name": "in_octets"
+          },
+          {
+            "type": "long",
+            "name": "out_octets"
+          },
+          {
+            "type": "long",
+            "name": "in_pkts"
+          },
+          {
+            "type": "long",
+            "name": "out_pkts"
+          },
+          {
+            "type": "long",
+            "name": "in_errors"
+          },
+          {
+            "type": "long",
+            "name": "out_discards"
+          }
+        ],
+        "dimensionExclusions": [
+          "kafka.timestamp",
+          "kafka.topic",
+          "kafka.partition",
+          "kafka.offset"
+        ]
+      },
+      "transformSpec": {
+        "transforms": [
+          {
+            "type": "expression",
+            "name": "device",
+            "expression": "nvl(\"hostname\", \"kafka.key\")"
+          }
+        ],
+        "filter": {
+          "type": "and",
+          "fields": [
+            {
+              "type": "not",
+              "field": {
+                "type": "null",
+                "column": "yang-rule"
+              }
+            },
+            {
+              "type": "equals",
+              "column": "yang-update",
+              "matchValueType": "STRING",
+              "matchValue": "push-update"
+            }
+          ]
+        }
+      },
+      "granularitySpec": {
+        "segmentGranularity": "hour",
+        "queryGranularity": "none",
+        "rollup": false
+      }
+    },
+    "ioConfig": {
+      "topic": "yang-telemetry",
+      "consumerProperties": {
+        "bootstrap.servers": "localhost:9092"
+      },
+      "useEarliestOffset": true,
+      "taskCount": 1,
+      "replicas": 1,
+      "taskDuration": "PT1H",
+      "inputFormat": {
+        "type": "kafka",
+        "keyFormat": {
+          "type": "regex",
+          "pattern": "(.*)",
+          "columns": [
+            "hostname"
+          ]
+        },
+        "valueFormat": {
+          "type": "yangJson",
+          "rules": [
+            {
+              "name": "interfaces",
+              "path": "interfaces/interface"
+            }
+          ],
+          "onUnmatched": "emit",
+          "flattenSpec": {
+            "useFieldDiscovery": true,
+            "fields": [
+              {
+                "type": "path",
+                "name": "in_octets",
+                "expr": "$.statistics['in-octets']"
+              },
+              {
+                "type": "path",
+                "name": "out_octets",
+                "expr": "$.statistics['out-octets']"
+              },
+              {
+                "type": "path",
+                "name": "in_pkts",
+                "expr": "$.statistics['in-unicast-pkts']"
+              },
+              {
+                "type": "path",
+                "name": "out_pkts",
+                "expr": "$.statistics['out-unicast-pkts']"
+              },
+              {
+                "type": "path",
+                "name": "in_errors",
+                "expr": "$.statistics['in-errors']"
+              },
+              {
+                "type": "path",
+                "name": "out_discards",
+                "expr": "$.statistics['out-discards']"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "tuningConfig": {
+      "type": "kafka",
+      "logParseExceptions": true,
+      "maxSavedParseExceptions": 20
+    }
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "ietf-restconf:notification": {
+    "eventTime": "2026-09-30T12:00:00.000Z",
+    "ietf-yang-push:push-update": {
+      "id": 1011,
+      "datastore-contents": {
+        "ietf-interfaces:interfaces": {
+          "interface": [
+            {
+              "name": "eth0",
+              "type": "iana-if-type:ethernetCsmacd",
+              "enabled": true,
+              "oper-status": "up",
+              "acme-ext:maintenance-mode": [null],
+              "statistics": {
+                "discontinuity-time": "2026-09-01T00:00:00Z",
+                "in-octets": "123456789012",
+                "out-octets": "98765",
+                "in-errors": 0
+              },
+              "ietf-ip:ipv4": {
+                "mtu": 1500,
+                "address": [
+                  {"ip": "192.0.2.1", "prefix-length": 24},
+                  {"ip": "192.0.2.2", "prefix-length": 24}
+                ]
+              }
+            },
+            {
+              "name": "eth1",
+              "type": "iana-if-type:ethernetCsmacd",
+              "enabled": false,
+              "oper-status": "down",
+              "statistics": {
+                "discontinuity-time": "2026-09-01T00:00:00Z",
+                "in-octets": "18446744073709551615",
+                "out-octets": "0",
+                "in-errors": 7
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

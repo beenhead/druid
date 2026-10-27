@@ -1,0 +1,56 @@
+module acme-if-ext {
+  yang-version 1.1;
+  namespace "urn:example:acme-if-ext";
+  prefix acme;
+
+  import ietf-interfaces {
+    prefix if;
+  }
+
+  organization "Example vendor (fictitious, for tests)";
+  description "Optics readings augmenting ietf-interfaces.";
+
+  revision 2026-09-30 {
+    description "Initial revision.";
+  }
+
+  augment "/if:interfaces/if:interface" {
+    container optics {
+      config false;
+      leaf serial-number {
+        type string;
+        description "Looks numeric on some parts, but is a string.";
+      }
+      leaf temperature {
+        type decimal64 {
+          fraction-digits 1;
+        }
+        units "celsius";
+      }
+      leaf rx-power {
+        type decimal64 {
+          fraction-digits 2;
+        }
+        units "dBm";
+      }
+      leaf tx-power {
+        type decimal64 {
+          fraction-digits 2;
+        }
+        units "dBm";
+      }
+      list lane {
+        key "index";
+        leaf index {
+          type uint8;
+        }
+        leaf rx-power {
+          type decimal64 {
+            fraction-digits 2;
+          }
+          units "dBm";
+        }
+      }
+    }
+  }
+}

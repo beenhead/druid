@@ -1,0 +1,33 @@
+{
+  "ietf-restconf:notification": {
+    "eventTime": "2026-09-30T13:31:41.118Z",
+    "ietf-yang-push:push-change-update": {
+      "id": 3010,
+      "datastore-changes": {
+        "yang-patch": {
+          "patch-id": "p-40",
+          "edit": [
+            {
+              "edit-id": "edit-1",
+              "operation": "merge",
+              "target": "/ietf-interfaces:interfaces/interface=GigabitEthernet0%2F0%2F7",
+              "value": {
+                "ietf-interfaces:interface": [
+                  {
+                    "name": "GigabitEthernet0/0/7",
+                    "oper-status": "down"
+                  }
+                ]
+              }
+            },
+            {
+              "edit-id": "edit-2",
+              "operation": "delete",
+              "target": "/ietf-interfaces:interfaces/interface=GigabitEthernet0%2F0%2F9/ietf-ip:ipv6"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

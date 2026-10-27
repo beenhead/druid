@@ -1,0 +1,163 @@
+{
+  "ietf-yp-notification:envelope": {
+    "event-time": "2026-09-30T13:27:31.118Z",
+    "hostname": "router-001.lab.example.net",
+    "sequence-number": 3,
+    "contents": {
+      "ietf-yang-push:push-update": {
+        "id": 2001,
+        "datastore-contents": {
+          "openconfig-network-instance:network-instances": {
+            "network-instance": [
+              {
+                "name": "default",
+                "protocols": {
+                  "protocol": [
+                    {
+                      "identifier": "openconfig-policy-types:BGP",
+                      "name": "BGP",
+                      "bgp": {
+                        "neighbors": {
+                          "neighbor": [
+                            {
+                              "neighbor-address": "192.0.2.172",
+                              "config": {
+                                "neighbor-address": "192.0.2.172",
+                                "peer-as": 64500
+                              },
+                              "state": {
+                                "neighbor-address": "192.0.2.172",
+                                "peer-as": 64500,
+                                "session-state": "ESTABLISHED",
+                                "established-transitions": "3",
+                                "messages": {
+                                  "received": {
+                                    "UPDATE": "7360312",
+                                    "NOTIFICATION": "0"
+                                  },
+                                  "sent": {
+                                    "UPDATE": "68857",
+                                    "NOTIFICATION": "0"
+                                  }
+                                }
+                              },
+                              "afi-safis": {
+                                "afi-safi": [
+                                  {
+                                    "afi-safi-name": "openconfig-bgp-types:IPV4_UNICAST",
+                                    "state": {
+                                      "prefixes": {
+                                        "received": 473427,
+                                        "installed": 426084,
+                                        "sent": 10
+                                      }
+                                    }
+                                  }
+                                ]
+                              }
+                            },
+                            {
+                              "neighbor-address": "2001:db8:ffff::2",
+                              "config": {
+                                "neighbor-address": "2001:db8:ffff::2",
+                                "peer-as": 64511
+                              },
+                              "state": {
+                                "neighbor-address": "2001:db8:ffff::2",
+                                "peer-as": 64511,
+                                "session-state": "ESTABLISHED",
+                                "established-transitions": "1",
+                                "messages": {
+                                  "received": {
+                                    "UPDATE": "5553757",
+                                    "NOTIFICATION": "0"
+                                  },
+                                  "sent": {
+                                    "UPDATE": "10303",
+                                    "NOTIFICATION": "0"
+                                  }
+                                }
+                              },
+                              "afi-safis": {
+                                "afi-safi": [
+                                  {
+                                    "afi-safi-name": "openconfig-bgp-types:IPV6_UNICAST",
+                                    "state": {
+                                      "prefixes": {
+                                        "received": 539141,
+                                        "installed": 485226,
+                                        "sent": 10
+                                      }
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "CUSTOMER-A",
+                "protocols": {
+                  "protocol": [
+                    {
+                      "identifier": "openconfig-policy-types:BGP",
+                      "name": "BGP",
+                      "bgp": {
+                        "neighbors": {
+                          "neighbor": [
+                            {
+                              "neighbor-address": "198.51.100.61",
+                              "config": {
+                                "neighbor-address": "198.51.100.61",
+                                "peer-as": 65001
+                              },
+                              "state": {
+                                "neighbor-address": "198.51.100.61",
+                                "peer-as": 65001,
+                                "session-state": "ESTABLISHED",
+                                "established-transitions": "3",
+                                "messages": {
+                                  "received": {
+                                    "UPDATE": "8154220",
+                                    "NOTIFICATION": "0"
+                                  },
+                                  "sent": {
+                                    "UPDATE": "29092",
+                                    "NOTIFICATION": "0"
+                                  }
+                                }
+                              },
+                              "afi-safis": {
+                                "afi-safi": [
+                                  {
+                                    "afi-safi-name": "openconfig-bgp-types:IPV4_UNICAST",
+                                    "state": {
+                                      "prefixes": {
+                                        "received": 565437,
+                                        "installed": 508893,
+                                        "sent": 10
+                                      }
+                                    }
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

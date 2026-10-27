@@ -1,0 +1,46 @@
+{
+  "ietf-yp-notification:envelope": {
+    "event-time": "2026-09-30T12:00:00.000Z",
+    "hostname": "router-1.example.net",
+    "sequence-number": 17,
+    "notification-contents": {
+      "ietf-yang-push:push-update": {
+        "id": 1011,
+        "datastore-contents": {
+          "ietf-interfaces:interfaces": {
+            "interface": [
+              {
+                "name": "HundredGigE0/1/0",
+                "description": "42",
+                "type": "iana-if-type:ethernetCsmacd",
+                "enabled": true,
+                "oper-status": "up",
+                "speed": "100000000000",
+                "higher-layer-if": ["Port-channel1"],
+                "statistics": {
+                  "discontinuity-time": "2026-09-01T00:00:00Z",
+                  "in-octets": "123456789012",
+                  "in-errors": 5,
+                  "out-octets": "18446744073709551615"
+                },
+                "ietf-ip:ipv6": {
+                  "address": [{"ip": "2001:db8::1", "prefix-length": 64, "status": "preferred"}],
+                  "neighbor": [{"ip": "fe80::1", "is-router": [null], "state": "reachable"}]
+                },
+                "acme-if-ext:optics": {
+                  "serial-number": "12345",
+                  "temperature": "41.5",
+                  "rx-power": "-3.21",
+                  "lane": [{"index": 1, "rx-power": "-3.20"}]
+                },
+                "other-vendor:maintenance-mode": [null],
+                "other-vendor:ticket": "007",
+                "other-vendor:utilisation": "12.5"
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

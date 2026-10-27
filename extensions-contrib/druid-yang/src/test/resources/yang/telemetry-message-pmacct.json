@@ -1,0 +1,93 @@
+{
+  "ietf-telemetry-message:message": {
+    "data-collection-manifest": {
+      "vendor": "pmacct",
+      "name": "default",
+      "software-version": "1.7.10-git",
+      "software-flavor": "20251029-0 (7c22e2cf)"
+    },
+    "payload": {
+      "ietf-yp-notification:envelope": {
+        "event-time": "2025-07-18T09:51:00.002Z",
+        "hostname": "ipf-zbl1327-r-daisy-91",
+        "sequence-number": 1,
+        "contents": {
+          "ietf-yang-push:push-update": {
+            "id": 210,
+            "ietf-yp-observation:timestamp": "2025-07-18T09:51:00.002Z",
+            "ietf-yp-observation:point-in-time": "current-accounting",
+            "datastore-contents": {
+              "openconfig-interfaces:interfaces": {
+                "interface": [
+                  {
+                    "name": "TenGigE0/0/0/23",
+                    "state": {
+                      "counters": {
+                        "in-octets": "0",
+                        "in-pkts": "0",
+                        "in-unicast-pkts": "0",
+                        "in-broadcast-pkts": "0",
+                        "in-multicast-pkts": "0",
+                        "in-discards": "0",
+                        "in-errors": "0",
+                        "in-unknown-protos": "0",
+                        "in-fcs-errors": "0",
+                        "out-octets": "0",
+                        "out-pkts": "0",
+                        "out-unicast-pkts": "0",
+                        "out-broadcast-pkts": "0",
+                        "out-multicast-pkts": "0",
+                        "out-discards": "0",
+                        "out-errors": "0",
+                        "Cisco-IOS-XR-openconfig-interfaces-stats-ext:cisco": {
+                          "last-read-time": "1752832251474"
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "network-operator-metadata": {
+      "labels": [
+        {
+          "name": "seq",
+          "anydata-values": 3
+        },
+        {
+          "name": "serialization",
+          "string-value": "json"
+        }
+      ]
+    },
+    "telemetry-message-metadata": {
+      "notification-event": "log",
+      "session-protocol": "yang-push",
+      "collection-timestamp": "2025-10-31 11:30:15.324895",
+      "export-address": "71.19.157.107",
+      "export-port": 31513,
+      "ietf-yang-push-telemetry-message:yang-push-subscription": {
+        "id": 210,
+        "ietf-yang-push:datastore": "ietf-datastores:operational",
+        "ietf-yang-push:datastore-xpath-filter": "openconfig-interfaces:interfaces/interface/state/counters",
+        "transport": "ietf-udp-notif-transport:udp-notif",
+        "ietf-yang-push-revision:module-version": [
+          {
+            "module-name": "openconfig-interfaces",
+            "revision": "2022-10-25"
+          }
+        ],
+        "ietf-yang-push-revision:yang-library-content-id": "6d13bafd8fd1dc21aa8932d1199b369794881393",
+        "encoding": "encode-json",
+        "ietf-yang-push:periodic": {
+          "period": 3000,
+          "anchor-time": "2025-01-01T00:00:30+00:00"
+        }
+      }
+    }
+  }
+}

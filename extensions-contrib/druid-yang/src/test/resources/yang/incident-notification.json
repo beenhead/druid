@@ -1,0 +1,83 @@
+{
+  "ietf-yp-notification:envelope": {
+    "event-time": "2026-10-01T10:30:00.000Z",
+    "hostname": "controller-1.lab.example.net",
+    "sequence-number": 812,
+    "notification-contents": {
+      "ietf-incident:incident-notification": {
+        "incident-no": "18446744073709550001",
+        "name": "Interface down on HundredGigE0/1/1",
+        "type": "ietf-incident:problem",
+        "incident-qualifier": "42",
+        "domain": "ietf-incident:ip",
+        "priority": "high",
+        "status": "raised",
+        "ack-status": "unacknowledged",
+        "category": "ietf-incident:device-hardware",
+        "occur-time": "2026-10-01T10:29:41.000Z",
+        "time": "2026-10-01T10:30:00.000Z",
+        "sources": {
+          "source": [
+            {
+              "node-ref": "router-008",
+              "network-ref": [
+                "ip-core"
+              ],
+              "resource": [
+                {
+                  "name": "/ietf-interfaces:interfaces/interface[name='HundredGigE0/1/1']"
+                }
+              ]
+            }
+          ]
+        },
+        "probable-causes": {
+          "probable-cause": [
+            {
+              "node-ref": "router-008",
+              "cause-name": "ietf-incident:loss-of-signal",
+              "detail": "Rx power -32.10 dBm"
+            }
+          ]
+        },
+        "events": {
+          "event": [
+            {
+              "type": "ietf-incident:alarm",
+              "event-id": "a-1",
+              "alarm": {
+                "resource": "/ietf-interfaces:interfaces/interface[name='HundredGigE0/1/1']",
+                "alarm-type-id": "ietf-alarms:alarm-type-id",
+                "alarm-type-qualifier": ""
+              }
+            },
+            {
+              "type": "ietf-incident:metric",
+              "event-id": "m-1",
+              "metric": {
+                "metric-name": "rx-power",
+                "threshold-value": "-12.00",
+                "observed-value": "-32.10"
+              }
+            },
+            {
+              "type": "ietf-incident:notification",
+              "event-id": "n-1",
+              "notification": {
+                "event-time": "2026-10-01T10:29:42.000Z",
+                "hostname": "router-008",
+                "sequence-number": 5501,
+                "contents": {
+                  "ietf-interfaces:interface": {
+                    "name": "HundredGigE0/1/1",
+                    "oper-status": "down"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,147 @@
+{
+  "type": "kafka",
+  "spec": {
+    "dataSchema": {
+      "dataSource": "yang_telemetry",
+      "timestampSpec": {
+        "column": "eventTime",
+        "format": "iso"
+      },
+      "dimensionsSpec": {
+        "useSchemaDiscovery": true,
+        "dimensions": [
+          "device",
+          "yang-rule",
+          "yang-update",
+          {
+            "type": "long",
+            "name": "subscription-id"
+          },
+          "name",
+          "oper-status",
+          {
+            "type": "long",
+            "name": "in_octets"
+          },
+          {
+            "type": "long",
+            "name": "out_octets"
+          },
+          {
+            "type": "long",
+            "name": "in_errors"
+          },
+          "network-instance.name",
+          "neighbor-address",
+          "session_state",
+          {
+            "type": "long",
+            "name": "updates_received"
+          },
+          {
+            "type": "long",
+            "name": "prefixes_received"
+          }
+        ],
+        "dimensionExclusions": [
+          "kafka.timestamp",
+          "kafka.topic",
+          "kafka.partition",
+          "kafka.offset"
+        ]
+      },
+      "transformSpec": {
+        "transforms": [
+          {
+            "type": "expression",
+            "name": "device",
+            "expression": "nvl(\"hostname\", \"kafka.key\")"
+          }
+        ]
+      },
+      "granularitySpec": {
+        "segmentGranularity": "hour",
+        "queryGranularity": "none",
+        "rollup": false
+      }
+    },
+    "ioConfig": {
+      "topic": "yang-telemetry",
+      "consumerProperties": {
+        "bootstrap.servers": "localhost:9092"
+      },
+      "useEarliestOffset": true,
+      "taskCount": 1,
+      "replicas": 1,
+      "taskDuration": "PT1H",
+      "inputFormat": {
+        "type": "kafka",
+        "keyFormat": {
+          "type": "regex",
+          "pattern": "(.*)",
+          "columns": [
+            "hostname"
+          ]
+        },
+        "valueFormat": {
+          "type": "yangJson",
+          "rules": [
+            {
+              "name": "interfaces",
+              "path": "interfaces/interface"
+            },
+            {
+              "name": "bgp-neighbors",
+              "path": "network-instances/network-instance/protocols/protocol/bgp/neighbors/neighbor"
+            }
+          ],
+          "schema": {
+            "type": "registry",
+            "url": "http://localhost:18081"
+          },
+          "onMissingSchemaId": "heuristic",
+          "flattenSpec": {
+            "useFieldDiscovery": true,
+            "fields": [
+              {
+                "type": "path",
+                "name": "in_octets",
+                "expr": "$.statistics['in-octets']"
+              },
+              {
+                "type": "path",
+                "name": "out_octets",
+                "expr": "$.statistics['out-octets']"
+              },
+              {
+                "type": "path",
+                "name": "in_errors",
+                "expr": "$.statistics['in-errors']"
+              },
+              {
+                "type": "path",
+                "name": "session_state",
+                "expr": "$.state['session-state']"
+              },
+              {
+                "type": "path",
+                "name": "updates_received",
+                "expr": "$.state.messages.received.UPDATE"
+              },
+              {
+                "type": "path",
+                "name": "prefixes_received",
+                "expr": "$['afi-safis']['afi-safi'][0].state.prefixes.received"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "tuningConfig": {
+      "type": "kafka",
+      "logParseExceptions": true,
+      "maxSavedParseExceptions": 20
+    }
+  }
+}
