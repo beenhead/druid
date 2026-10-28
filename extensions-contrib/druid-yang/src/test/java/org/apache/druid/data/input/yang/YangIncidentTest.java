@@ -68,7 +68,7 @@ public class YangIncidentTest
     Assertions.assertEquals(ImmutableList.of("node-ref", "cause-name"), notification.child("probable-causes").child("probable-cause").getKeys());
     Assertions.assertNotNull(root.child("alarm-notification"));
 
-    // choice/case are transparent: each case's container sits directly under event; anydata has no schema
+    // choice/case are transparent: each case's container sits directly under event; anydata has no schema below it
     final YangSchemaIndex.Node event = notification.child("events").child("event");
     Assertions.assertEquals(ImmutableList.of("type", "event-id"), event.getKeys());
     Assertions.assertNull(event.child("event-type-info"));
@@ -78,7 +78,8 @@ public class YangIncidentTest
         YangSchemaIndex.ValueType.INTEGER,
         event.child("notification").child("sequence-number").getValueType()
     );
-    Assertions.assertNull(event.child("notification").child("contents"));
+    Assertions.assertEquals(YangSchemaIndex.Kind.ANYDATA, event.child("notification").child("contents").getKind());
+    Assertions.assertTrue(event.child("notification").child("contents").getChildren().isEmpty());
 
     // the contents of notifications don't leak into the top level, and rpcs and sx:structure aren't instance data
     for (String name : new String[]{"incident-no", "status", "priority", "perceived-severity", "alarm-text",

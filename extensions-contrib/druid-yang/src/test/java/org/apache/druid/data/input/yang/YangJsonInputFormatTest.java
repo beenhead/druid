@@ -46,6 +46,7 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -87,7 +88,7 @@ public class YangJsonInputFormatTest
         null,
         null,
         null,
-        null, mapper
+        null, null, mapper
     );
     final InputFormat roundTripped = mapper.readValue(mapper.writeValueAsString(format), InputFormat.class);
     Assertions.assertEquals(format, roundTripped);
@@ -105,6 +106,7 @@ public class YangJsonInputFormatTest
     Assertions.assertTrue(format.isCoerceTypes());
     Assertions.assertTrue(format.isUnwrapEnvelope());
     Assertions.assertFalse(format.isKeepNullColumns());
+    Assertions.assertEquals(YangJsonInputFormat.Validation.NONE, format.getValidation());
   }
 
   @Test
@@ -142,7 +144,7 @@ public class YangJsonInputFormatTest
   @Test
   public void testReadWithSchemaDiscovery() throws IOException
   {
-    final InputFormat format = new YangJsonInputFormat(null, "interfaces/interface", null, null, null, null, null, null, null, null, null, null, mapper);
+    final InputFormat format = new YangJsonInputFormat(null, "interfaces/interface", null, null, null, null, null, null, null, null, null, null, null, mapper);
     final List<InputRow> rows = read(
         format,
         new InputRowSchema(
@@ -164,7 +166,7 @@ public class YangJsonInputFormatTest
   @Test
   public void testSampleReturnsTransformedRows() throws IOException
   {
-    final InputFormat format = new YangJsonInputFormat(null, "interfaces/interface", null, null, null, null, null, null, null, null, null, null, mapper);
+    final InputFormat format = new YangJsonInputFormat(null, "interfaces/interface", null, null, null, null, null, null, null, null, null, null, null, mapper);
     final InputEntityReader reader = format.createReader(
         new InputRowSchema(
             new TimestampSpec(YangJsonTransformer.EVENT_TIME, "iso", null),
@@ -190,7 +192,7 @@ public class YangJsonInputFormatTest
   public void testMessageWithoutExplodePathIsParseException() throws IOException
   {
     final InputFormat format =
-        new YangJsonInputFormat(null, "network-instances/network-instance", null, null, null, null, null, null, null, null, null, null, mapper);
+        new YangJsonInputFormat(null, "network-instances/network-instance", null, null, null, null, null, null, null, null, null, null, null, mapper);
     final InputEntityReader reader = format.createReader(
         new InputRowSchema(
             new TimestampSpec(YangJsonTransformer.EVENT_TIME, "iso", null),
@@ -212,7 +214,7 @@ public class YangJsonInputFormatTest
   public void testMalformedOrEmptyMessageIsParseException() throws IOException
   {
     final InputFormat format =
-        new YangJsonInputFormat(null, "interfaces/interface", null, null, null, null, null, null, null, null, null, null, mapper);
+        new YangJsonInputFormat(null, "interfaces/interface", null, null, null, null, null, null, null, null, null, null, null, mapper);
     final InputRowSchema schema = new InputRowSchema(
         new TimestampSpec(YangJsonTransformer.EVENT_TIME, "iso", null),
         DimensionsSpec.builder().useSchemaDiscovery(true).build(),
@@ -255,7 +257,7 @@ public class YangJsonInputFormatTest
             "interfaces/interface",
             ImmutableList.of(new YangExplodeRule(null, "interfaces/interface")),
             null, null, null, null, null, null, null, null,
-            null, mapper
+            null, null, mapper
         )
     );
   }
@@ -269,7 +271,7 @@ public class YangJsonInputFormatTest
         ImmutableList.of(new YangExplodeRule("bgp", "network-instances/network-instance")),
         YangJsonInputFormat.OnUnmatched.EMIT,
         null, null, null, null, null, null, null,
-        null, mapper
+        null, null, mapper
     );
     final List<InputRow> rows = read(
         format,
@@ -284,6 +286,70 @@ public class YangJsonInputFormatTest
     Assertions.assertEquals(1, rows.size());
     Assertions.assertNull(rows.get(0).getRaw(YangJsonTransformer.YANG_RULE));
     Assertions.assertEquals(DateTimes.of("2026-09-30T12:00:00.000Z"), rows.get(0).getTimestamp());
+  }
+
+  @Test
+  public void testStrictValidationNeedsSchema()
+  {
+    Assertions.assertThrows(
+        IAE.class,
+        () -> new YangJsonInputFormat(
+            null,
+            "interfaces/interface",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            YangJsonInputFormat.Validation.STRICT,
+            mapper
+        )
+    );
+  }
+
+  @Test
+  public void testStrictValidation() throws Exception
+  {
+    final String modules = Paths.get(getClass().getResource("/yang/telemetry-modules").toURI()).toString();
+    final InputFormat format = mapper.readValue(
+        StringUtils.format(
+            "{\"type\": \"yangJson\", \"explodePath\": \"interfaces/interface\", \"validation\": \"strict\","
+            + " \"schema\": {\"type\": \"directory\", \"path\": \"%s\"}}",
+            modules
+        ),
+        InputFormat.class
+    );
+    Assertions.assertEquals(format, mapper.readValue(mapper.writeValueAsString(format), InputFormat.class));
+    final InputRowSchema schema = new InputRowSchema(
+        new TimestampSpec(YangJsonTransformer.EVENT_TIME, "iso", null),
+        DimensionsSpec.builder().useSchemaDiscovery(true).build(),
+        ColumnsFilter.all()
+    );
+
+    final byte[] valid = resource("telemetry-message-validation.json");
+    final List<InputRow> rows = read(format, schema, valid);
+    Assertions.assertEquals(2, rows.size());
+    Assertions.assertEquals("eth0", rows.get(0).getRaw("name"));
+
+    final byte[] invalid = StringUtils.toUtf8(
+        StringUtils.replace(StringUtils.fromUtf8(valid), "\"notification-event\": \"log\",", "")
+    );
+    final InputEntityReader reader = format.createReader(schema, new ByteEntity(invalid), null);
+    try (CloseableIterator<InputRow> iterator = reader.read()) {
+      final ParseException e = Assertions.assertThrows(ParseException.class, iterator::next);
+      Assertions.assertTrue(
+          e.getMessage().startsWith(
+              "Message is not valid against its YANG schema, 1 problem(s): "
+              + "/ietf-telemetry-message:message/telemetry-message-metadata: missing mandatory leaf [notification-event]"
+          ),
+          e.getMessage()
+      );
+    }
   }
 
   private static List<InputRow> read(InputFormat format, InputRowSchema schema, byte[] data) throws IOException

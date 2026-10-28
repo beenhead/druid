@@ -281,7 +281,7 @@ public class RegistryYangSchemaSource implements YangSchemaSource
 
   private static String encode(String segment)
   {
-    return URLEncoder.encode(segment, StandardCharsets.UTF_8).replace("+", "%20");
+    return StringUtils.replace(URLEncoder.encode(segment, StandardCharsets.UTF_8), "+", "%20");
   }
 
   @JsonIgnore

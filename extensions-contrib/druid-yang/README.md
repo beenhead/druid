@@ -262,6 +262,7 @@ a recreated topic may need a supervisor reset (`POST .../supervisor/yang_telemet
 | `schemaIdHeader` | `schema-id` | Kafka header holding the message's schema id. |
 | `schemaIdEncoding` | `int32` | `int32`: 4-byte big-endian integer, as written by the network-analytics serializers. `string`: decimal digits, as shown in the draft's examples. |
 | `onMissingSchemaId` | `fail` | For messages without a schema id when the `schema` needs one (a registry without `subject`): `fail` makes them parse exceptions; `heuristic` processes them without a schema. Use `heuristic` while only some subscriptions have registered schemas. |
+| `validation` | `none` | `strict` validates each message against its schema and makes an invalid one a parse exception listing the first problems; requires a `schema`. See [Validation](#validation). |
 | `flattenSpec` | none | Standard Druid JSONPath flattenSpec, applied to each row *after* the steps above. |
 | `keepNullColumns` | `false` | Same as for the `json` input format. |
 
@@ -354,8 +355,44 @@ by the parser, and `choice`/`case` are transparent, as in the JSON encoding. The
 or by `module:name` where two modules collide.
 
 Besides datastore data, the schema covers **notifications**, including YANG 1.1 notifications nested in containers
-and lists, as top-level nodes named after the notification (e.g. `incident-notification`). RPCs, actions and
-`sx:structure` (RFC 8791) definitions aren't instance data and are left out.
+and lists, as top-level nodes named after the notification (e.g. `incident-notification`). RPCs and actions aren't
+instance data and are left out. `sx:structure` (RFC 8791) definitions, such as the telemetry `message` and the
+notification `envelope`, are only used for [validation](#validation).
+
+A device's YANG library often contains a few modules that yangkit rejects, typically ones unrelated to the
+subscription (a broken augment in some Broadband Forum module, say). Compilation is therefore tolerant: modules that
+fail to parse or validate, and modules importing them, are logged as broken and left out, and the rest of the schema
+is used. Only a schema in which every module is broken is rejected. With `validation: strict`, a message using a node
+of a broken module is reported as invalid, with the module's error.
+
+### Validation
+
+With `"validation": "strict"`, each message is checked against its schema before it is turned into rows, and an
+invalid message is a parse exception (counted as `unparseable`, and logged with `logParseExceptions`) such as:
+
+```
+Message is not valid against its YANG schema, 1 problem(s):
+/ietf-telemetry-message:message/telemetry-message-metadata: missing mandatory leaf [notification-event]
+```
+
+What is checked:
+
+- Every member is a known node of its parent, of the right kind (container, list, leaf, leaf-list, anydata).
+  Top-level members may be data nodes, notifications or structures, so a telemetry `message`, a bare notification
+  `envelope` or a plain notification all validate.
+- The contents of `anydata` nodes (the telemetry `payload`, an envelope's `contents`, a push-update's
+  `datastore-contents`) are validated from the top of the schema, as in
+  [draft-aelhassany-using-yang-library-to-validate-anydata](https://datatracker.ietf.org/doc/draft-aelhassany-using-yang-library-to-validate-anydata/).
+- Values match their types, with yangkit evaluating ranges, lengths, patterns, enumerations and bits. Identityrefs
+  must name a known identity derived from the type's base. Unions accept a value any member accepts. Integers are
+  accepted as JSON numbers or strings, whatever their size.
+- List entries have all their keys.
+- Leaves that are unconditionally mandatory (no `when`, `if-feature`, enclosing `choice`, or augment) are present in
+  structures and notifications. They are not enforced in datastore data, which subscription filters legitimately
+  leave partial.
+
+Not checked: `must` and `when` expressions, leafref targets, `unique`, `min-elements`/`max-elements`, and the
+`value` of YANG-Patch edits (it is relative to the edit's target). RFC 7952 metadata members (`@...`) are ignored.
 
 ### From a schema registry
 
@@ -552,13 +589,17 @@ src/main/java/org/apache/druid/data/input/yang/
   schema/
     YangSchemaSource.java           where schemas come from (registry, directory)
     RegistryYangSchemaSource.java   Confluent REST client, reference resolution, cache
-    YangSchemaCompiler.java         yangkit → YangSchemaIndex (the only class using yangkit)
-    YangSchemaIndex.java            data tree, list keys and value types; no parser types
+    YangSchemaCompiler.java         yangkit → YangSchemaIndex (tolerates broken modules)
+    YangValueChecks.java            per-type value checks built on yangkit restrictions
+    YangSchemaIndex.java            data tree, structures, list keys, value types and checks; no parser types
+    YangValidator.java              validates RFC 7951 instance data against a YangSchemaIndex
     RecordHeaders.java              reads Kafka headers without depending on the Kafka extension
 src/test/resources/yang/     YANG-Push fixtures (ietf-interfaces, notif-envelope, OpenConfig BGP, on-change, and the
                              telemetry message examples of the draft)
 src/test/resources/yang/modules/   ietf-interfaces, ietf-ip, ietf-yang-types, ietf-inet-types, and a fictitious
                                    acme-if-ext optics augment
+src/test/resources/yang/telemetry-modules/   the IETF modules of a telemetry message carrying YANG-Push, for
+                                             validation tests
 dev/                         generator, Kafka supervisor specs, schema registry setup and registration script
 ```
 
@@ -583,7 +624,8 @@ mvn -pl extensions-contrib/druid-yang -o test-compile dependency:build-classpath
 P=org.apache.druid.data.input.yang
 java -cp "extensions-contrib/druid-yang/target/test-classes:extensions-contrib/druid-yang/target/classes:$(cat /tmp/cp.txt)" \
   org.junit.runner.JUnitCore $P.YangJsonTransformerTest $P.YangJsonInputFormatTest $P.YangSchemaTypingTest \
-  $P.YangSchemaReaderTest $P.YangIncidentTest $P.schema.YangSchemaCompilerTest $P.schema.RegistryYangSchemaSourceTest
+  $P.YangSchemaReaderTest $P.YangIncidentTest $P.schema.YangSchemaCompilerTest $P.schema.RegistryYangSchemaSourceTest \
+  $P.schema.YangValidatorTest
 ```
 
 ### A contract to keep in mind
@@ -596,10 +638,11 @@ on it with a `NullPointerException` when it adds the key and header columns.
 
 ## Limitations and roadmap
 
-- **Schema coverage.** Only typing, list keys and the notification/data tree come from the schema; data isn't
-  validated against it (the network-analytics deserializer can validate, if needed upstream). Unions are only
-  typed when their first member is numeric. yangkit 1.4.5 from Maven Central is used; the network-analytics plugin
-  runs a 1.5.0 fork whose changes are in data validation, which this extension doesn't use.
+- **Schema coverage.** Validation is this extension's own, built on yangkit's schema model and type restrictions;
+  see [Validation](#validation) for what it leaves out. Unions are only typed when their first member is numeric.
+  YANG features from the registry's schema metadata are not applied yet: every feature is treated as enabled.
+  yangkit 1.4.5 from Maven Central is used; the network-analytics plugin runs a 1.5.0 fork whose changes are in data
+  validation, which this extension doesn't use.
 - **Schema registration layout.** The subject-per-module layout with augments as references follows the draft and
   the plugin's tests. It hasn't yet been checked against what YANG-Push receivers such as NetGauze register.
 - **Generating specs from schemas.** The draft expects ingestion specs to be derived from the schema; today rules

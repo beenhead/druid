@@ -198,7 +198,7 @@ public class YangSchemaReaderTest
   public void testWithoutSchemaSameMessageIsTypedHeuristically() throws IOException
   {
     final InputFormat format =
-        new YangJsonInputFormat(null, "interfaces/interface", null, null, null, null, null, null, null, null, null, null, mapper);
+        new YangJsonInputFormat(null, "interfaces/interface", null, null, null, null, null, null, null, null, null, null, null, mapper);
     final List<InputRow> rows = read(format, kafka(int32(7)));
     Assertions.assertEquals(42L, rows.get(0).getRaw("description"));
   }

@@ -19,14 +19,18 @@
 
 package org.apache.druid.data.input.yang.schema;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashMap;
 import java.util.Map;
 
 public class YangSchemaCompilerTest
@@ -141,6 +145,39 @@ public class YangSchemaCompilerTest
     Assertions.assertThrows(
         YangSchemaCompiler.YangSchemaException.class,
         () -> YangSchemaCompiler.compile(ImmutableMap.of("broken", "module broken { this is not yang"))
+    );
+  }
+
+  @Test
+  public void testBrokenModulesAreIgnored()
+  {
+    final Map<String, String> modules = new HashMap<>(modules());
+    modules.put("unparseable.yang", "module unparseable { this is not yang");
+    modules.put(
+        "acme-broken@2026-10-28.yang",
+        "module acme-broken { yang-version 1.1; namespace \"urn:acme:broken\"; prefix ab;"
+        + " import ietf-interfaces { prefix if; }"
+        + " container thing { leaf x { type string; } }"
+        + " augment \"/if:interfaces/if:no-such-node\" { leaf y { type string; } } }"
+    );
+
+    final YangSchemaIndex index = YangSchemaCompiler.compile(modules);
+
+    Assertions.assertEquals(ImmutableSet.of("unparseable", "acme-broken"), index.getBrokenModules().keySet());
+    Assertions.assertNotNull(path(index, "interfaces", "interface", "optics"));
+
+    final ObjectNode document = new ObjectMapper().createObjectNode();
+    document.putObject("acme-broken:thing").put("x", "1");
+    document.putObject("unparseable:other");
+    final YangValidator.Result result = YangValidator.validate(document, index, 10);
+    Assertions.assertEquals(2, result.getCount());
+    Assertions.assertTrue(
+        result.getProblems().get(0).startsWith("/acme-broken:thing: defined by module [acme-broken], which failed to compile: "),
+        result.getProblems().get(0)
+    );
+    Assertions.assertTrue(
+        result.getProblems().get(1).startsWith("/unparseable:other: defined by module [unparseable], which failed to compile: "),
+        result.getProblems().get(1)
     );
   }
 }

@@ -19,17 +19,21 @@
 
 package org.apache.druid.data.input.yang.schema;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 
 import javax.annotation.Nullable;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
- * The parts of a compiled YANG schema that ingestion needs: the data tree (containers, lists, leaves and leaf-lists,
- * with choices, cases and uses already flattened and augments applied), list keys, and a coarse value type per leaf.
- * Built by {@link YangSchemaCompiler}; free of any parser types.
+ * The parts of a compiled YANG schema that ingestion needs: the data tree (containers, lists, leaves, leaf-lists and
+ * anydata, with choices, cases and uses already flattened and augments applied), list keys, a coarse value type per
+ * leaf, and what {@link YangValidator} checks. Built by {@link YangSchemaCompiler}; free of any parser types.
  */
 public class YangSchemaIndex
 {
@@ -39,7 +43,23 @@ public class YangSchemaIndex
     CONTAINER,
     LIST,
     LEAF,
-    LEAF_LIST
+    LEAF_LIST,
+    /**
+     * Instance data of any schema, e.g. the payload of a telemetry message or the datastore contents of a push-update.
+     */
+    ANYDATA
+  }
+
+  /**
+   * Checks a leaf or leaf-list value against its YANG type.
+   */
+  public interface ValueCheck
+  {
+    /**
+     * @return why the value is invalid, or null if it is valid
+     */
+    @Nullable
+    String check(JsonNode value);
   }
 
   /**
@@ -82,15 +102,33 @@ public class YangSchemaIndex
     @Nullable
     private final ValueType valueType;
     private final List<String> keys;
+    private final boolean mandatory;
+    @Nullable
+    private final ValueCheck valueCheck;
     private final Map<String, Node> children = new HashMap<>();
 
     public Node(String name, @Nullable String module, Kind kind, @Nullable ValueType valueType, List<String> keys)
+    {
+      this(name, module, kind, valueType, keys, false, null);
+    }
+
+    public Node(
+        String name,
+        @Nullable String module,
+        Kind kind,
+        @Nullable ValueType valueType,
+        List<String> keys,
+        boolean mandatory,
+        @Nullable ValueCheck valueCheck
+    )
     {
       this.name = name;
       this.module = module;
       this.kind = kind;
       this.valueType = valueType;
       this.keys = ImmutableList.copyOf(keys);
+      this.mandatory = mandatory;
+      this.valueCheck = valueCheck;
     }
 
     public String getName()
@@ -127,6 +165,24 @@ public class YangSchemaIndex
     }
 
     /**
+     * Whether the node must be present whenever its parent is. Only set where that holds unconditionally: not for
+     * nodes in a choice, under a {@code when} or {@code if-feature}, or added by an augment.
+     */
+    public boolean isMandatory()
+    {
+      return mandatory;
+    }
+
+    /**
+     * Set for leaves and leaf-lists.
+     */
+    @Nullable
+    public ValueCheck getValueCheck()
+    {
+      return valueCheck;
+    }
+
+    /**
      * Looks up a child by local name or by qualified {@code module:name}. A qualified name is needed only when two
      * modules put nodes with the same local name at the same level.
      */
@@ -151,12 +207,35 @@ public class YangSchemaIndex
   }
 
   private final Node root;
+  private final Node structures;
   private final List<String> modules;
+  private final Set<String> notifications;
+  private final Map<String, String> brokenModules;
 
   public YangSchemaIndex(Node root, List<String> modules)
   {
+    this(
+        root,
+        new Node("", null, Kind.ROOT, null, ImmutableList.of()),
+        ImmutableSet.of(),
+        modules,
+        ImmutableMap.of()
+    );
+  }
+
+  public YangSchemaIndex(
+      Node root,
+      Node structures,
+      Set<String> notifications,
+      List<String> modules,
+      Map<String, String> brokenModules
+  )
+  {
     this.root = root;
+    this.structures = structures;
+    this.notifications = ImmutableSet.copyOf(notifications);
     this.modules = ImmutableList.copyOf(modules);
+    this.brokenModules = ImmutableMap.copyOf(brokenModules);
   }
 
   public Node getRoot()
@@ -165,10 +244,46 @@ public class YangSchemaIndex
   }
 
   /**
+   * Top-level {@code sx:structure} definitions (RFC 8791), such as {@code ietf-yp-notification:envelope} and
+   * {@code ietf-telemetry-message:message}. They are not part of the data tree, but messages are instances of them.
+   */
+  public Node getStructures()
+  {
+    return structures;
+  }
+
+  /**
+   * Whether {@code node} is a top-level notification rather than a datastore data node.
+   */
+  public boolean isTopLevelNotification(Node node)
+  {
+    return notifications.contains(node.getModule() + ":" + node.getName());
+  }
+
+  /**
+   * Looks up a top-level data node, notification or structure.
+   */
+  @Nullable
+  public Node topLevel(String name)
+  {
+    final Node node = root.child(name);
+    return node != null ? node : structures.child(name);
+  }
+
+  /**
    * Names of the modules the schema was compiled from.
    */
   public List<String> getModules()
   {
     return modules;
+  }
+
+  /**
+   * Modules that failed to parse or validate, with the first error for each. The rest of the schema is still usable;
+   * nodes from these modules may be missing or incomplete.
+   */
+  public Map<String, String> getBrokenModules()
+  {
+    return brokenModules;
   }
 }

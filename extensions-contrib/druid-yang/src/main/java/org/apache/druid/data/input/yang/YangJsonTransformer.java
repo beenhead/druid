@@ -262,7 +262,7 @@ public class YangJsonTransformer
     while (fields.hasNext()) {
       final Map.Entry<String, JsonNode> field = fields.next();
       final YangSchemaIndex.Node child = schemaNode.child(field.getKey());
-      if (child == null) {
+      if (child == null || child.getKind() == YangSchemaIndex.Kind.ANYDATA) {
         if (coerceTypes) {
           field.setValue(normalize(field.getValue(), true));
         }

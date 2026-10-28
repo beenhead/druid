@@ -1,0 +1,85 @@
+{
+  "ietf-telemetry-message:message": {
+    "network-node-manifest": {
+      "name": "pe1",
+      "vendor": "acme",
+      "software-version": "1.2.3"
+    },
+    "telemetry-message-metadata": {
+      "node-export-timestamp": "2026-10-28T08:27:30.350Z",
+      "collection-timestamp": "2026-10-28T08:27:30.603Z",
+      "notification-event": "log",
+      "session-protocol": "yang-push",
+      "export-address": "192.0.2.79",
+      "export-port": 10100,
+      "ietf-yang-push-telemetry-message:yang-push-subscription": {
+        "id": 1,
+        "datastore": "ietf-datastores:operational",
+        "xpath-filter": "/ietf-interfaces:interfaces/interface/statistics",
+        "encoding": "ietf-subscribed-notifications:encode-json",
+        "periodic": {
+          "period": 6000,
+          "anchor-time": "2026-01-01T00:00:30Z"
+        },
+        "module": [
+          {
+            "name": "ietf-interfaces",
+            "revision": "2018-02-20"
+          }
+        ],
+        "yang-library-content-id": "22934"
+      }
+    },
+    "data-collection-manifest": {
+      "name": "collector-1",
+      "vendor": "NetCalyx",
+      "software-version": "0.3.0"
+    },
+    "network-operator-metadata": {
+      "labels": [
+        {
+          "name": "platform_id",
+          "string-value": "FANO"
+        }
+      ]
+    },
+    "payload": {
+      "ietf-yp-notification:envelope": {
+        "event-time": "2026-10-28T08:27:30.350Z",
+        "hostname": "pe1",
+        "sequence-number": 142,
+        "contents": {
+          "ietf-yang-push:push-update": {
+            "id": 1,
+            "datastore-contents": {
+              "ietf-interfaces:interfaces": {
+                "interface": [
+                  {
+                    "name": "eth0",
+                    "type": "iana-if-type:ethernetCsmacd",
+                    "oper-status": "up",
+                    "statistics": {
+                      "discontinuity-time": "2026-10-01T00:00:00Z",
+                      "in-octets": "18446744073709551615",
+                      "in-errors": 0
+                    }
+                  },
+                  {
+                    "name": "eth1",
+                    "type": "iana-if-type:ethernetCsmacd",
+                    "oper-status": "down",
+                    "statistics": {
+                      "discontinuity-time": "2026-10-01T00:00:00Z",
+                      "in-octets": "0",
+                      "in-errors": 3
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

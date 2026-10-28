@@ -37,6 +37,7 @@ import org.apache.druid.data.input.yang.schema.RecordHeaders;
 import org.apache.druid.data.input.yang.schema.YangSchemaCompiler;
 import org.apache.druid.data.input.yang.schema.YangSchemaIndex;
 import org.apache.druid.data.input.yang.schema.YangSchemaSource;
+import org.apache.druid.data.input.yang.schema.YangValidator;
 import org.apache.druid.java.util.common.CloseableIterators;
 import org.apache.druid.java.util.common.parsers.CloseableIterator;
 import org.apache.druid.java.util.common.parsers.JSONFlattenerMaker;
@@ -65,6 +66,7 @@ import java.util.Map;
 public class YangJsonNodeReader extends IntermediateRowParsingReader<JsonNode>
 {
   private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {};
+  private static final int MAX_REPORTED_PROBLEMS = 10;
 
   private final InputRowSchema inputRowSchema;
   private final ObjectMapper mapper;
@@ -77,6 +79,7 @@ public class YangJsonNodeReader extends IntermediateRowParsingReader<JsonNode>
   private final String schemaIdHeader;
   private final YangJsonInputFormat.SchemaIdEncoding schemaIdEncoding;
   private final YangJsonInputFormat.OnMissingSchemaId onMissingSchemaId;
+  private final YangJsonInputFormat.Validation validation;
 
   public YangJsonNodeReader(
       InputRowSchema inputRowSchema,
@@ -88,7 +91,8 @@ public class YangJsonNodeReader extends IntermediateRowParsingReader<JsonNode>
       @Nullable YangSchemaSource schemaSource,
       String schemaIdHeader,
       YangJsonInputFormat.SchemaIdEncoding schemaIdEncoding,
-      YangJsonInputFormat.OnMissingSchemaId onMissingSchemaId
+      YangJsonInputFormat.OnMissingSchemaId onMissingSchemaId,
+      YangJsonInputFormat.Validation validation
   )
   {
     this.inputRowSchema = inputRowSchema;
@@ -104,6 +108,7 @@ public class YangJsonNodeReader extends IntermediateRowParsingReader<JsonNode>
     this.schemaIdHeader = schemaIdHeader;
     this.schemaIdEncoding = schemaIdEncoding;
     this.onMissingSchemaId = onMissingSchemaId;
+    this.validation = validation;
   }
 
   @Override
@@ -157,7 +162,7 @@ public class YangJsonNodeReader extends IntermediateRowParsingReader<JsonNode>
     if (intermediateRow instanceof ParseExceptionMarkerJsonNode) {
       throw ((ParseExceptionMarkerJsonNode) intermediateRow).getParseException();
     }
-    final List<ObjectNode> transformed = transformer.transform(intermediateRow, resolveSchema(intermediateRow));
+    final List<ObjectNode> transformed = transform(intermediateRow);
     if (transformed.isEmpty()) {
       // IntermediateRowParsingReader requires at least one row per intermediate row, so a message that matches no
       // rule (e.g. another subscription on the same topic) must be reported, not skipped. With onUnmatched=emit the
@@ -173,6 +178,29 @@ public class YangJsonNodeReader extends IntermediateRowParsingReader<JsonNode>
       rows.add(MapInputRowParser.parse(inputRowSchema, flattener.flatten(node)));
     }
     return rows;
+  }
+
+  /**
+   * Validates the message if configured, then transforms it into rows.
+   */
+  private List<ObjectNode> transform(JsonNode intermediateRow)
+  {
+    final YangSchemaIndex schema = resolveSchema(intermediateRow);
+    if (validation == YangJsonInputFormat.Validation.STRICT) {
+      if (schema == null) {
+        throw new ParseException(intermediateRow.toString(), "Cannot validate a message without a YANG schema");
+      }
+      final YangValidator.Result result = YangValidator.validate(intermediateRow, schema, MAX_REPORTED_PROBLEMS);
+      if (!result.isValid()) {
+        throw new ParseException(
+            intermediateRow.toString(),
+            "Message is not valid against its YANG schema, %d problem(s): %s",
+            result.getCount(),
+            String.join("; ", result.getProblems())
+        );
+      }
+    }
+    return transformer.transform(intermediateRow, schema);
   }
 
   /**
@@ -232,7 +260,7 @@ public class YangJsonNodeReader extends IntermediateRowParsingReader<JsonNode>
     if (intermediateRow instanceof ParseExceptionMarkerJsonNode) {
       throw ((ParseExceptionMarkerJsonNode) intermediateRow).getParseException();
     }
-    final List<ObjectNode> transformed = transformer.transform(intermediateRow, resolveSchema(intermediateRow));
+    final List<ObjectNode> transformed = transform(intermediateRow);
     final List<Map<String, Object>> maps = new ArrayList<>(transformed.size());
     for (ObjectNode node : transformed) {
       maps.add(mapper.convertValue(node, MAP_TYPE));

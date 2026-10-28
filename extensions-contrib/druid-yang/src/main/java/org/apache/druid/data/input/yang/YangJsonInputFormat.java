@@ -136,6 +136,35 @@ public class YangJsonInputFormat extends NestedInputFormat
     }
   }
 
+  /**
+   * Whether to validate messages against their YANG schema.
+   */
+  public enum Validation
+  {
+    /**
+     * Don't validate; the schema is only used to type values.
+     */
+    NONE,
+    /**
+     * Report a parse exception for a message that is not valid instance data of its schema, listing the problems.
+     * Requires a schema.
+     */
+    STRICT;
+
+    @JsonValue
+    @Override
+    public String toString()
+    {
+      return StringUtils.toLowerCase(name());
+    }
+
+    @JsonCreator
+    public static Validation fromString(String name)
+    {
+      return valueOf(StringUtils.toUpperCase(name));
+    }
+  }
+
   public static final String DEFAULT_SCHEMA_ID_HEADER = "schema-id";
 
   private final ObjectMapper objectMapper;
@@ -144,6 +173,7 @@ public class YangJsonInputFormat extends NestedInputFormat
   private final String schemaIdHeader;
   private final SchemaIdEncoding schemaIdEncoding;
   private final OnMissingSchemaId onMissingSchemaId;
+  private final Validation validation;
   @Nullable
   private final String explodePath;
   private final List<YangExplodeRule> rules;
@@ -167,12 +197,16 @@ public class YangJsonInputFormat extends NestedInputFormat
       @JsonProperty("schemaIdHeader") @Nullable String schemaIdHeader,
       @JsonProperty("schemaIdEncoding") @Nullable SchemaIdEncoding schemaIdEncoding,
       @JsonProperty("onMissingSchemaId") @Nullable OnMissingSchemaId onMissingSchemaId,
+      @JsonProperty("validation") @Nullable Validation validation,
       @JacksonInject @Json ObjectMapper objectMapper
   )
   {
     super(flattenSpec);
     if (explodePath != null && rules != null && !rules.isEmpty()) {
       throw new IAE("Specify either explodePath or rules, not both");
+    }
+    if (validation == Validation.STRICT && schema == null) {
+      throw new IAE("validation [%s] needs a schema", validation);
     }
     this.explodePath = explodePath;
     this.rules = rules == null ? ImmutableList.of() : ImmutableList.copyOf(rules);
@@ -185,6 +219,7 @@ public class YangJsonInputFormat extends NestedInputFormat
     this.schemaIdHeader = schemaIdHeader == null ? DEFAULT_SCHEMA_ID_HEADER : schemaIdHeader;
     this.schemaIdEncoding = schemaIdEncoding == null ? SchemaIdEncoding.INT32 : schemaIdEncoding;
     this.onMissingSchemaId = onMissingSchemaId == null ? OnMissingSchemaId.FAIL : onMissingSchemaId;
+    this.validation = validation == null ? Validation.NONE : validation;
     this.objectMapper = objectMapper;
   }
 
@@ -262,6 +297,12 @@ public class YangJsonInputFormat extends NestedInputFormat
     return onMissingSchemaId;
   }
 
+  @JsonProperty
+  public Validation getValidation()
+  {
+    return validation;
+  }
+
   List<YangExplodeRule> getEffectiveRules()
   {
     return explodePath == null ? rules : ImmutableList.of(new YangExplodeRule(null, explodePath));
@@ -292,7 +333,8 @@ public class YangJsonInputFormat extends NestedInputFormat
         schema,
         schemaIdHeader,
         schemaIdEncoding,
-        onMissingSchemaId
+        onMissingSchemaId,
+        validation
     );
   }
 
@@ -316,6 +358,7 @@ public class YangJsonInputFormat extends NestedInputFormat
            && onUnmatched == that.onUnmatched
            && schemaIdEncoding == that.schemaIdEncoding
            && onMissingSchemaId == that.onMissingSchemaId
+           && validation == that.validation
            && schemaIdHeader.equals(that.schemaIdHeader)
            && Objects.equals(schema, that.schema)
            && Objects.equals(explodePath, that.explodePath)
@@ -337,7 +380,8 @@ public class YangJsonInputFormat extends NestedInputFormat
         schema,
         schemaIdHeader,
         schemaIdEncoding,
-        onMissingSchemaId
+        onMissingSchemaId,
+        validation
     );
   }
 
@@ -357,6 +401,7 @@ public class YangJsonInputFormat extends NestedInputFormat
            ", schemaIdHeader='" + schemaIdHeader + '\'' +
            ", schemaIdEncoding=" + schemaIdEncoding +
            ", onMissingSchemaId=" + onMissingSchemaId +
+           ", validation=" + validation +
            '}';
   }
 }
